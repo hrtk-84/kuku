@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>九九奥義伝</title>
+  <meta name="description" content="九九を ひっさつわざで おぼえよう">
+  <meta name="theme-color" content="#0b0418">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="九九奥義伝">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="icon" type="image/png" href="icons/icon-192.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=M+PLUS+Rounded+1c:wght@500;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="bg" aria-hidden="true">
+    <div class="nebula"></div>
+    <div class="starfield s1"></div>
+    <div class="starfield s2"></div>
+    <div class="bg-kanji">九九</div>
+  </div>
+  <canvas id="fx" aria-hidden="true"></canvas>
+  <main id="app"></main>
+  <div id="cast" class="hidden"></div>
+  <div id="modal" class="hidden"></div>
+  <script src="js/data.js"></script>
+  <script src="js/sound.js"></script>
+  <script src="js/art.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
