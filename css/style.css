@@ -157,14 +157,18 @@ body.hurt::after {
   border-radius: 20px; background: var(--panel); border: 1px solid var(--line);
   box-shadow: 0 10px 30px rgba(0, 0, 0, .35);
 }
+.player { width: 100%; text-align: left; cursor: pointer; transition: transform .1s; }
+.player:active { transform: scale(.98); }
+.p-hero { position: relative; width: 74px; height: 74px; flex: none; border-radius: 18px;
+  background: radial-gradient(circle at 50% 40%, rgba(123, 44, 255, .6), rgba(10, 4, 24, .8)); border: 1px solid var(--line); }
+.p-hero svg { width: 100%; height: 100%; }
 .p-lv {
-  width: 62px; height: 62px; flex: none; border-radius: 16px;
-  display: grid; place-items: center; font-size: 28px; line-height: 1;
-  background: radial-gradient(circle at 30% 25%, #ffe98a, #ff9d00 60%, #b35300);
-  color: #3a1a00; box-shadow: 0 0 18px rgba(255, 179, 0, .6), inset 0 -4px 0 rgba(0, 0, 0, .2);
-  flex-direction: column;
+  position: absolute; left: 50%; bottom: -8px; transform: translateX(-50%); white-space: nowrap;
+  padding: 1px 8px; border-radius: 99px; font-size: 13px; line-height: 1.4;
+  background: linear-gradient(180deg, #ffe98a, #ff9d00); color: #3a1a00; box-shadow: 0 2px 0 #7a4400;
 }
-.p-lv small { font-size: 12px; }
+.p-next { margin-top: 4px; font-size: 11px; color: var(--gold); }
+.p-col em { display: block; margin-top: 6px; font-style: normal; font-size: 10px; color: var(--cyan); white-space: nowrap; }
 .p-body { flex: 1; min-width: 0; }
 .p-title { font-size: 18px; margin-bottom: 6px; }
 .bar { height: 12px; border-radius: 99px; background: rgba(0, 0, 0, .45); overflow: hidden; border: 1px solid var(--line); }
@@ -567,3 +571,99 @@ body.hurt::after {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
 }
+
+/* ---------- 主人公 ---------- */
+.hero .hero-aura { animation: auraPulse 2s ease-in-out infinite; transform-origin: 100px 110px; }
+.hero .hero-wings { animation: flap 1.2s ease-in-out infinite alternate; transform-origin: 100px 130px; }
+.hero .hero-glow { animation: blink .8s ease-in-out infinite alternate; }
+@keyframes auraPulse { 50% { transform: scale(1.08); opacity: .7; } }
+
+/* ---------- ステータス ---------- */
+.status { max-width: 720px; }
+.st-top { display: flex; align-items: center; gap: 16px; padding: 16px; border-radius: 22px; background: var(--panel); border: 1px solid var(--line); }
+.st-hero { width: 150px; flex: none; aspect-ratio: 1; border-radius: 20px;
+  background: radial-gradient(circle at 50% 45%, rgba(123, 44, 255, .55), rgba(10, 4, 24, .6)); }
+.st-hero svg { width: 100%; height: 100%; animation: bob 2.4s ease-in-out infinite; }
+.st-info { flex: 1; min-width: 0; }
+.st-form { font-size: 12px; color: var(--cyan); }
+.st-title { font-size: 26px; line-height: 1.2; margin: 2px 0; }
+.st-lv { font-size: 20px; color: var(--gold); margin-bottom: 6px; }
+.st-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+.st-stats > div { padding: 10px 8px; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); text-align: center; }
+.st-stats small { display: block; font-size: 10px; color: var(--sub); }
+.st-stats b { font-size: 22px; color: #fff; }
+.st-stats b small { display: inline; font-size: 11px; margin-left: 2px; }
+.st-stats > div:first-child b { color: #ff2d55; font-size: 18px; letter-spacing: 1px; }
+.st-h { margin: 22px 0 10px; font-size: 15px; color: var(--sub); display: flex; align-items: center; gap: 8px; }
+.st-h::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+.forms { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.form { text-align: center; padding: 6px 2px 8px; border-radius: 14px; background: var(--panel); border: 2px solid transparent; }
+.form-art { aspect-ratio: 1; }
+.form-art svg { width: 100%; height: 100%; }
+.form b { display: block; font-size: 12px; }
+.form small { font-size: 10px; color: var(--sub); }
+.form.lock .form-art { filter: brightness(0) opacity(.45); }
+.form.lock b { color: var(--sub); }
+.form.now { border-color: var(--gold); box-shadow: 0 0 16px rgba(255, 213, 74, .4); }
+.skills { display: grid; gap: 8px; }
+@media (min-width: 640px) { .skills { grid-template-columns: 1fr 1fr; } }
+.skill { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 16px; background: var(--panel); border: 1px solid var(--line); }
+.sk-icon { width: 44px; height: 44px; flex: none; border-radius: 12px; display: grid; place-items: center; font-size: 22px;
+  background: linear-gradient(180deg, #ffd54a, #ff7b00); color: #3a1a00; box-shadow: 0 0 12px rgba(255, 179, 0, .5); }
+.sk-body { flex: 1; min-width: 0; }
+.sk-body b { font-size: 15px; }
+.sk-body small { margin-left: 6px; font-size: 10px; color: var(--sub); }
+.sk-body p { margin: 2px 0 0; font-size: 12px; color: var(--sub); line-height: 1.4; }
+.sk-lv { font-size: 11px; color: var(--gold); white-space: nowrap; }
+.skill.lock { opacity: .55; }
+.skill.lock .sk-icon { background: #2a1a4a; color: var(--sub); box-shadow: none; }
+.skill.next { opacity: 1; border: 2px dashed var(--gold); }
+.skill.next .sk-lv { font-size: 14px; }
+.powers { padding: 12px 14px; border-radius: 16px; background: var(--panel); border: 1px solid var(--line); }
+.powers p { margin: 0 0 10px; font-size: 13px; line-height: 1.6; color: var(--sub); }
+.pow-row { display: flex; align-items: center; justify-content: space-around; text-align: center; }
+.pow-row > span { color: var(--sub); font-size: 20px; }
+.pow-row div { font-size: 13px; }
+.pow-row b { display: block; font-size: 30px; line-height: 1.1; }
+.pow-row small { display: block; font-size: 10px; color: var(--sub); }
+
+/* ---------- レベルアップ ---------- */
+.res-next { font-size: 13px; color: var(--sub); margin: -8px 0 12px; }
+.lvup-panel {
+  margin: 0 auto 16px; padding: 16px; max-width: 420px; border-radius: 22px;
+  background: linear-gradient(180deg, rgba(255, 61, 127, .3), rgba(123, 44, 255, .3)); border: 2px solid rgba(255, 213, 74, .7);
+  box-shadow: 0 0 30px rgba(255, 213, 74, .35); animation: badge .6s cubic-bezier(.2, 1.6, .4, 1) .5s both;
+}
+.lvup-head { font-size: 34px; line-height: 1; background: linear-gradient(180deg, #fff, #ffd54a 50%, #ff7b00);
+  -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 3px 0 #3a0a50); }
+.lvup-lv { font-size: 22px; margin-top: 6px; }
+.lvup-lv span { color: var(--gold); margin: 0 6px; }
+.lvup-title { font-size: 14px; color: var(--gold); margin-top: 2px; }
+.lvup-evo { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 10px; }
+.lvup-evo > div { width: 96px; aspect-ratio: 1; }
+.lvup-evo svg { width: 100%; height: 100%; }
+.evo-from { filter: grayscale(.6) opacity(.6); }
+.evo-to { animation: evolve 1.2s ease-out 1s both; }
+@keyframes evolve { 0% { filter: brightness(0); } 40% { filter: brightness(4); transform: scale(1.15); } 100% { filter: none; transform: none; } }
+.lvup-evo > span { font-size: 26px; color: var(--gold); }
+.lvup-evo-cap { font-size: 14px; margin-top: 2px; }
+.lvup-skill { display: flex; align-items: center; gap: 10px; margin-top: 10px; padding: 8px 10px; border-radius: 12px; background: rgba(0, 0, 0, .35); text-align: left; }
+.lvup-skill i { font-style: normal; width: 38px; height: 38px; flex: none; border-radius: 10px; display: grid; place-items: center; font-size: 20px;
+  background: linear-gradient(180deg, #ffd54a, #ff7b00); color: #3a1a00; }
+.lvup-skill b { display: block; font-size: 14px; }
+.lvup-skill small { font-size: 12px; color: var(--sub); }
+
+/* ---------- バトル追加 ---------- */
+.bhp-num { min-width: 2.4em; text-align: right; font-size: 14px; }
+.hero-mini { position: absolute; left: 0; bottom: 26px; width: 22%; max-width: 90px; aspect-ratio: 1; z-index: 2; }
+.hero-mini svg { width: 100%; height: 100%; }
+.hero-mini.cast svg { animation: heroCast .5s; }
+.hero-mini.hurt svg { animation: heroHurt .5s; }
+@keyframes heroCast { 40% { transform: translate(10px, -14px) scale(1.12); filter: brightness(1.8); } }
+@keyframes heroHurt { 20%, 60% { transform: translateX(-8px); filter: brightness(2) hue-rotate(-40deg) saturate(3); } 40% { transform: translateX(6px); } }
+.combo { position: absolute; right: 2px; top: 6px; z-index: 2; font-size: 30px; line-height: 1; text-align: center; color: var(--gold);
+  text-shadow: 0 3px 0 #7a4400, 0 0 12px rgba(255, 213, 74, .7); animation: qpop .3s; }
+.combo small { display: block; font-family: 'M PLUS Rounded 1c'; font-size: 11px; color: #fff; text-shadow: none; }
+.dmg small { display: block; font-size: 16px; text-align: center; }
+.dmg.heal { color: #7dffb0; -webkit-text-stroke: 2px #0a5c3a; text-shadow: 0 3px 0 #03281a; font-size: 30px; top: 55%; }
+.dmg.haki { color: #ff6aa2; font-size: 38px; top: 12%; }

@@ -35,14 +35,32 @@
   function levelInfo(xp) {
     let lv = 1, need = 60, rest = xp;
     while (rest >= need) { rest -= need; lv++; need = Math.round(need * 1.2); }
-    return { lv, cur: rest, need, title: TITLES[Math.min(TITLES.length - 1, Math.floor((lv - 1) / 2))] };
+    return { lv, cur: rest, need, title: TITLES[Math.min(TITLES.length - 1, lv - 1)] };
   }
+  // 戻り値：レベルが上がったら { from, to }、上がらなければ null
   function addXp(n) {
-    const before = levelInfo(save.xp).lv;
+    const from = levelInfo(save.xp).lv;
     save.xp += n;
     persist();
-    return levelInfo(save.xp).lv > before;
+    const to = levelInfo(save.xp).lv;
+    return to > from ? { from, to } : null;
   }
+  const curLv = () => levelInfo(save.xp).lv;
+  const formOf = lv => FORMS.reduce((acc, f, i) => (lv >= f.lv ? i : acc), 0);
+  function perks(lv) {
+    const has = n => lv >= n;
+    return {
+      hearts: has(6) ? 5 : has(2) ? 4 : 3,
+      time: has(3) ? 3000 : 0,
+      combo: has(4),
+      heal: has(5),
+      crit: has(7) ? 5000 : 3500,
+      opening: has(8) ? 20 : 0,
+      mult: has(10) ? 1.5 : 1,
+    };
+  }
+  const nextSkill = lv => SKILLS.find(s => s.lv > lv);
+  const power = f => TIER_DMG[tier(f)];
 
   // ---------- 画面管理 ----------
   let cleanups = [];
@@ -213,14 +231,14 @@
   function openCard(f) {
     const t = tier(f);
     const st = save.facts[f.key] || { c: 0, w: 0 };
-    const next = t < 3 ? `つぎの ランク「${TIER_NAMES[t + 1]}」まで あと <b>${TIER_NEED[t + 1] - st.c}</b> かい` : 'さいこうランク たっせい！';
+    const next = t < 3 ? `あと <b>${TIER_NEED[t + 1] - st.c}</b> かい せいかいで「${TIER_NAMES[t + 1]}」→ いりょく <b>${TIER_DMG[t + 1]}</b>` : 'さいこうランク たっせい！';
     modalEl.className = 'modal';
     modalEl.innerHTML = `
       <div class="modal-back"></div>
       <div class="modal-body">
         ${cardHTML(f, { big: true })}
         ${t ? `<p class="desc">${f.desc}</p>` : `<p class="desc">まだ ふういん されている…<br>「しゅぎょう」で ${f.a} × ${f.b} を こたえて かいほうしよう！</p>`}
-        <div class="mstats"><span>せいかい <b>${st.c}</b></span><span>まちがい <b>${st.w}</b></span></div>
+        <div class="mstats"><span>いりょく <b>${t ? TIER_DMG[t] : '-'}</b></span><span>せいかい <b>${st.c}</b></span><span>まちがい <b>${st.w}</b></span></div>
         <p class="mnext">${next}</p>
         <div class="mbtns">
           ${t ? '<button class="btn btn-main" data-chant>▶ となえる</button>' : ''}
@@ -328,15 +346,16 @@
           <div class="logo-yomi">く く お う ぎ で ん</div>
         </header>
 
-        <div class="player">
-          <div class="p-lv dela"><small>Lv.</small>${L.lv}</div>
+        <button class="player" data-status>
+          <div class="p-hero">${Art.hero(formOf(L.lv))}<span class="p-lv dela">Lv.${L.lv}</span></div>
           <div class="p-body">
             <div class="p-title">${L.title}</div>
             <div class="bar"><i style="width:${(L.cur / L.need) * 100}%"></i></div>
             <div class="p-xp">つぎの レベルまで ${L.need - L.cur} XP</div>
+            ${nextSkill(L.lv) ? `<div class="p-next">Lv.${nextSkill(L.lv).lv}で スキル「${nextSkill(L.lv).name}」</div>` : '<div class="p-next">すべての スキルを しゅうとく！</div>'}
           </div>
-          <div class="p-col"><small>わざ</small><b class="dela">${got}</b><small>/81</small></div>
-        </div>
+          <div class="p-col"><small>わざ</small><b class="dela">${got}</b><small>/81</small><em>ステータス ›</em></div>
+        </button>
 
         <div class="home-main">
           <div class="feature">
@@ -366,6 +385,7 @@
       if (g === 'zukan') zukan(); else select(g);
     }));
     $('.feature .card').addEventListener('click', () => cast(feat));
+    $('[data-status]').addEventListener('click', () => { Sound.tap(); status(); });
   }
 
   // ---------- 段えらび ----------
@@ -495,7 +515,7 @@
           const before = tier(f);
           stat(f).c++;
           const after = tier(f);
-          if (after > before) badge = before === 0 ? '✦ NEW！ わざ しゅうとく ✦' : `ランクアップ！「${TIER_NAMES[after]}」`;
+          if (after > before) badge = before === 0 ? '✦ NEW！ わざ しゅうとく ✦' : `ランクアップ！「${TIER_NAMES[after]}」 いりょく ${TIER_DMG[before]}→${TIER_DMG[after]}`;
           xp += 10;
           gained.set(f.key, f);
           persist();
@@ -534,10 +554,13 @@
   function battleScreen(target) {
     const d = target === 'all' ? LAST_BOSS : DANS[target - 1];
     const boss = d.boss;
-    const queue = target === 'all' ? shuffle(FACTS.filter(f => f.a >= 2)).slice(0, 15) : shuffle(FACTS.filter(f => f.a === target));
-    const maxHp = queue.length;
-    let hp = maxHp, hearts = 3, cur = null, t0 = 0, raf = 0, crits = 0;
-    const LIMIT = target === 'all' ? 9000 : 12000;
+    const pool = target === 'all' ? FACTS.filter(f => f.a >= 2) : FACTS.filter(f => f.a === target);
+    let queue = shuffle(pool);
+    const P = perks(curLv());
+    const maxHp = target === 'all' ? BOSS_HP.all : BOSS_HP.dan;
+    const maxHearts = P.hearts;
+    let hp = maxHp, hearts = maxHearts, cur = null, t0 = 0, raf = 0, crits = 0, combo = 0, lost = 0;
+    const LIMIT = (target === 'all' ? 9000 : 12000) + P.time;
     const used = new Map();
     let xp = 0;
 
@@ -550,7 +573,9 @@
         </header>
         <div class="stage bstage" id="stage">
           <div class="boss" id="boss">${Art.monster(boss)}</div>
-          <div class="bhp"><div class="bhp-name">${boss.name}</div><div class="bhp-bar"><i id="hpbar"></i></div></div>
+          <div class="bhp"><div class="bhp-name">${boss.name}</div><div class="bhp-bar"><i id="hpbar"></i></div><div class="bhp-num dela" id="hpnum"></div></div>
+          <div class="hero-mini" id="hero">${Art.hero(formOf(curLv()))}</div>
+          <div class="combo dela hidden" id="combo"></div>
         </div>
         <div class="timer"><i id="timer"></i></div>
         ${qboxHTML()}
@@ -561,10 +586,15 @@
 
     const quiz = makeQuiz({ onDigitsDone: v => judge(v) });
     const bossEl = $('#boss');
+    const heroEl = $('#hero');
 
     function renderHud() {
-      $('#hearts').innerHTML = [0, 1, 2].map(i => `<i class="${i < hearts ? 'on' : ''}">♥</i>`).join('');
-      $('#hpbar').style.width = `${(hp / maxHp) * 100}%`;
+      $('#hearts').innerHTML = Array.from({ length: maxHearts }, (_, i) => `<i class="${i < hearts ? 'on' : ''}">♥</i>`).join('');
+      $('#hpbar').style.width = `${(Math.max(0, hp) / maxHp) * 100}%`;
+      $('#hpnum').textContent = Math.max(0, hp);
+      const c = $('#combo');
+      c.classList.toggle('hidden', combo < 2);
+      c.innerHTML = `${combo}<small>れんぞく${P.combo && combo >= 3 ? ' ×2' : ''}</small>`;
     }
     function tick() {
       const left = Math.max(0, 1 - (Date.now() - t0) / LIMIT);
@@ -576,7 +606,8 @@
       raf = requestAnimationFrame(tick);
     }
     function next() {
-      if (!queue.length || hp <= 0) return win();
+      if (hp <= 0) return win();
+      if (!queue.length) queue = shuffle(pool);
       cur = queue.shift();
       setQuestion(cur);
       quiz.ask(cur.ans);
@@ -584,15 +615,24 @@
       cancelAnimationFrame(raf);
       raf = requestAnimationFrame(tick);
     }
-    const bossAnim = cls => {
-      bossEl.classList.remove('hit', 'attack', 'crit'); void bossEl.offsetWidth; bossEl.classList.add(cls);
+    const anim = (el, cls) => {
+      el.classList.remove('hit', 'attack', 'crit', 'cast', 'hurt'); void el.offsetWidth; el.classList.add(cls);
     };
-    function popDamage(text, crit) {
+    function popText(text, cls = '') {
       const p = document.createElement('div');
-      p.className = 'dmg dela' + (crit ? ' crit' : '');
-      p.textContent = text;
+      p.className = 'dmg dela ' + cls;
+      p.innerHTML = text;
       $('#stage').appendChild(p);
-      setTimeout(() => p.remove(), 1100);
+      setTimeout(() => p.remove(), 1200);
+    }
+    function dealDamage(n, crit, colors) {
+      hp -= n;
+      anim(bossEl, crit ? 'crit' : 'hit');
+      crit ? Sound.crit() : Sound.hit();
+      const r = bossEl.getBoundingClientRect();
+      FX.burst(r.left + r.width / 2, r.top + r.height / 2, colors, 40, 9);
+      popText(crit ? `${n}<small>CRITICAL!</small>` : `${n}`, crit ? 'crit' : '');
+      renderHud();
     }
 
     async function judge(v) {
@@ -600,40 +640,49 @@
       const f = cur;
       const ms = Date.now() - t0;
       if (v === f.ans) {
-        const crit = ms < 3500;
+        const crit = ms < P.crit;
         if (crit) crits++;
+        combo++;
         stat(f).c++;
         persist();
         used.set(f.key, f);
         xp += crit ? 15 : 10;
-        await cast(f, { short: true, badge: crit ? '⚡ クリティカル！' : '' });
-        hp--;
-        bossAnim(crit ? 'crit' : 'hit');
-        crit ? Sound.crit() : Sound.hit();
-        const r = bossEl.getBoundingClientRect();
-        FX.burst(r.left + r.width / 2, r.top + r.height / 2, FX_COLORS[elKey(f)], 40, 9);
-        popDamage(crit ? `${f.ans}!! CRITICAL` : `${f.ans}`, crit);
-        renderHud();
-        later(next, hp <= 0 ? 900 : 650);
+        let dmg = power(f) * P.mult;
+        const doubled = P.combo && combo >= 3;
+        if (doubled) dmg *= 2;
+        if (crit) dmg *= 1.5;
+        dmg = Math.round(dmg);
+        const badges = [];
+        if (crit) badges.push('⚡ クリティカル');
+        if (doubled) badges.push(`⚔ れんげき ×2`);
+        anim(heroEl, 'cast');
+        await cast(f, { short: true, badge: badges.join('　') });
+        dealDamage(dmg, crit, FX_COLORS[elKey(f)]);
+        if (P.heal && combo % 5 === 0 && hearts < maxHearts) {
+          hearts++;
+          later(() => { Sound.sparkle(); popText('♥ かいふく', 'heal'); renderHud(); }, 350);
+        }
+        later(next, hp <= 0 ? 900 : 700);
       } else {
         stat(f).w++;
         persist();
-        queue.push(f);
+        combo = 0;
         hearts--;
-        bossAnim('attack');
-        later(() => { Sound.hurt(); shake(); document.body.classList.add('hurt'); setTimeout(() => document.body.classList.remove('hurt'), 400); }, 250);
+        lost++;
+        anim(bossEl, 'attack');
+        later(() => { anim(heroEl, 'hurt'); Sound.hurt(); shake(); document.body.classList.add('hurt'); setTimeout(() => document.body.classList.remove('hurt'), 400); }, 250);
         showTeach(f, v === null ? 'じかんぎれ！ こたえは…' : 'ざんねん！ こたえは…');
         renderHud();
+        queue.splice(Math.min(2, queue.length), 0, f);
         later(() => (hearts <= 0 ? lose() : next()), 2300);
       }
     }
 
     function win() {
       cancelAnimationFrame(raf);
-      const key = target;
-      const prev = save.stars[key] || 0;
-      save.stars[key] = Math.max(prev, hearts);
-      xp += 40 + hearts * 10;
+      const stars = lost === 0 ? 3 : lost === 1 ? 2 : 1;
+      save.stars[target] = Math.max(save.stars[target] || 0, stars);
+      xp += 40 + stars * 10;
       const lvUp = addXp(xp);
       bossEl.classList.add('defeat');
       Sound.fanfare();
@@ -642,7 +691,7 @@
         win: true,
         head: 'しょうり！',
         sub: `${boss.name}を たおした！${crits ? `（クリティカル ${crits}かい）` : ''}`,
-        stars: hearts, xp, lvUp, boss,
+        stars, xp, lvUp, boss,
         cards: [...used.values()],
         retry: () => battleScreen(target),
         back: () => select('battle'),
@@ -655,7 +704,7 @@
       result({
         win: false,
         head: 'まけてしまった…',
-        sub: 'しゅぎょうして また いどもう！',
+        sub: `あと ${hp} ダメージ！ しゅぎょうで わざを きたえて また いどもう！`,
         xp, lvUp, boss,
         cards: [...used.values()],
         retry: () => battleScreen(target),
@@ -664,7 +713,15 @@
     }
 
     renderHud();
-    later(() => { Sound.whoosh(); next(); }, 700);
+    later(() => {
+      Sound.whoosh();
+      if (P.opening) {
+        anim(heroEl, 'cast');
+        popText('覇気！', 'haki');
+        dealDamage(P.opening, false, ['#ff3d7f', '#ffd54a', '#fff']);
+        later(next, 900);
+      } else next();
+    }, 700);
   }
 
   // ---------- リザルト ----------
@@ -676,7 +733,9 @@
         ${boss ? `<div class="res-boss ${win ? 'down' : ''}">${Art.monster(boss)}</div>` : ''}
         ${stars != null ? `<div class="stars big">${starStr(stars)}</div>` : ''}
         <p class="res-sub">${sub}</p>
-        <div class="res-xp"><b class="dela">+${xp}</b> XP ${lvUp ? `<span class="lvup">LEVEL UP! Lv.${L.lv}「${L.title}」</span>` : ''}</div>
+        <div class="res-xp"><b class="dela">+${xp}</b> XP</div>
+        ${levelUpHTML(lvUp)}
+        ${!lvUp ? `<div class="res-next">つぎの レベルまで あと ${L.need - L.cur} XP</div>` : ''}
         ${cards.length ? `<h3>つかった わざ</h3><div class="grid small">${cards.map(f => cardHTML(f)).join('')}</div>` : ''}
         <div class="res-btns">
           <button class="btn btn-main" data-r="retry">もういちど</button>
@@ -684,12 +743,101 @@
           <button class="btn" data-r="home">ホーム</button>
         </div>
       </section>`);
-    if (lvUp) later(() => Sound.levelup(), 500);
+    if (lvUp) later(() => { Sound.levelup(); Voice.say('レベルアップ！'); }, 900);
     if (win) later(() => Voice.say(head.replace('！', '')), 200);
     $('[data-r="retry"]').addEventListener('click', () => { Sound.tap(); retry(); });
     $('[data-r="back"]').addEventListener('click', () => { Sound.tap(); back(); });
     $('[data-r="home"]').addEventListener('click', () => { Sound.tap(); home(); });
     $$('.grid .card').forEach(c => c.addEventListener('click', () => openCard(FACTS.find(f => f.key === c.dataset.key))));
+  }
+
+  // ---------- ステータス ----------
+  function status() {
+    const L = levelInfo(save.xp);
+    const P = perks(L.lv);
+    const form = formOf(L.lv);
+    const kaiden = FACTS.filter(f => tier(f) === 3).length;
+    const starSum = Object.values(save.stars).reduce((a, b) => a + b, 0);
+    const avgPow = Math.round(FACTS.reduce((a, f) => a + power(f), 0) / FACTS.length * 10) / 10;
+    show(`
+      <section class="screen status">
+        <header class="shead">
+          <button class="back" data-back>‹</button>
+          <h2 class="dela">ステータス</h2>
+          <p>しゅぎょうと けっとうで つよくなろう！</p>
+        </header>
+
+        <div class="st-top">
+          <div class="st-hero">${Art.hero(form)}</div>
+          <div class="st-info">
+            <div class="st-form">${FORMS[form].name}のすがた</div>
+            <div class="st-title dela">${L.title}</div>
+            <div class="st-lv dela">Lv.${L.lv}</div>
+            <div class="bar"><i style="width:${(L.cur / L.need) * 100}%"></i></div>
+            <div class="p-xp">つぎの レベルまで ${L.need - L.cur} XP</div>
+          </div>
+        </div>
+
+        <div class="st-stats">
+          <div><small>ハート</small><b class="dela">${'♥'.repeat(P.hearts)}</b></div>
+          <div><small>せいげんじかん</small><b class="dela">${12 + P.time / 1000}<small>びょう</small></b></div>
+          <div><small>わざの へいきん いりょく</small><b class="dela">${avgPow}</b></div>
+          <div><small>あつめた わざ</small><b class="dela">${learnedCount(FACTS)}<small>/81</small></b></div>
+          <div><small>皆伝の わざ</small><b class="dela">${kaiden}<small>/81</small></b></div>
+          <div><small>ボスの ほし</small><b class="dela">${starSum}<small>/30</small></b></div>
+        </div>
+
+        <h3 class="st-h">しんか</h3>
+        <div class="forms">
+          ${FORMS.map((f, i) => `
+            <div class="form ${i <= form ? 'got' : 'lock'} ${i === form ? 'now' : ''}">
+              <div class="form-art">${Art.hero(i)}</div>
+              <b>${i <= form ? f.name : '？？？'}</b><small>Lv.${f.lv}</small>
+            </div>`).join('')}
+        </div>
+
+        <h3 class="st-h">スキル</h3>
+        <div class="skills">
+          ${SKILLS.map(s => {
+            const got = L.lv >= s.lv;
+            const isNext = !got && nextSkill(L.lv) === s;
+            return `<div class="skill ${got ? 'got' : 'lock'} ${isNext ? 'next' : ''}">
+              <div class="sk-icon">${got ? s.icon : '？'}</div>
+              <div class="sk-body"><b>${got || isNext ? s.name : '？？？'}</b>${got || isNext ? `<small>${s.yomi}</small>` : ''}
+                <p>${got || isNext ? s.desc : 'まだ ひみつ'}</p></div>
+              <div class="sk-lv">${got ? 'しゅうとく' : `Lv.${s.lv}`}</div>
+            </div>`;
+          }).join('')}
+        </div>
+
+        <h3 class="st-h">わざの いりょく</h3>
+        <div class="powers">
+          <p>しゅぎょうで おなじ わざを なんども せいかいすると ランクが あがり、けっとうで あたえる ダメージが ふえる！</p>
+          <div class="pow-row">
+            <div class="t1c"><b class="dela">${TIER_DMG[1]}</b>初伝<small>1かい</small></div><span>›</span>
+            <div class="t2c"><b class="dela">${TIER_DMG[2]}</b>中伝<small>5かい</small></div><span>›</span>
+            <div class="t3c"><b class="dela">${TIER_DMG[3]}</b>皆伝<small>10かい</small></div>
+          </div>
+        </div>
+      </section>`);
+    $('[data-back]').addEventListener('click', () => { Sound.tap(); home(); });
+  }
+
+  function levelUpHTML(up) {
+    if (!up) return '';
+    const newSkills = SKILLS.filter(s => s.lv > up.from && s.lv <= up.to);
+    const evolved = formOf(up.to) > formOf(up.from);
+    return `
+      <div class="lvup-panel">
+        <div class="lvup-head dela">LEVEL UP!</div>
+        <div class="lvup-lv dela">Lv.${up.from} <span>›</span> Lv.${up.to}</div>
+        <div class="lvup-title">しょうごう「${TITLES[Math.min(TITLES.length - 1, up.to - 1)]}」</div>
+        ${evolved ? `<div class="lvup-evo">
+            <div class="evo-from">${Art.hero(formOf(up.from))}</div><span>›</span>
+            <div class="evo-to">${Art.hero(formOf(up.to))}</div>
+          </div><div class="lvup-evo-cap">「${FORMS[formOf(up.to)].name}」に しんかした！</div>` : ''}
+        ${newSkills.map(s => `<div class="lvup-skill"><i>${s.icon}</i><div><b>スキル「${s.name}」を おぼえた！</b><small>${s.desc}</small></div></div>`).join('')}
+      </div>`;
   }
 
   // ---------- 技図鑑 ----------

@@ -179,5 +179,66 @@ const Art = (() => {
     return s + '</svg>';
   }
 
-  return { emblem, circle, monster };
+  // 主人公（術士）：stage 0〜4 で進化
+  const HERO = [
+    { robe: '#6b7a99', robe2: '#3a4660', trim: '#c9b27a', staff: '#8a5a2b', band: '#e0115f' },
+    { robe: '#2f6fe0', robe2: '#16357a', trim: '#ffd54a', staff: '#8a5a2b', hat: '#2448a8', gem: '#35e0ff' },
+    { robe: '#7b2cff', robe2: '#35097f', trim: '#ffd54a', staff: '#4a2f78', hat: '#5a1bc2', gem: '#ff3df2', cape: '#c2185b', aura: '#b56bff', star: true },
+    { robe: '#e0115f', robe2: '#6a002c', trim: '#ffd54a', staff: '#e8e8f0', hat: '#9c0b45', gem: '#ffe14d', cape: '#1b0a3a', aura: '#ff6aa2', wings: '#ffffff', star: true },
+    { robe: '#fff6dc', robe2: '#ffb300', trim: '#ff3d7f', staff: '#ffd54a', gem: '#ff2d55', cape: '#b3004f', aura: '#ffd54a', wings: '#ffe98a', crown: true },
+  ];
+  function hero(stage) {
+    const p = HERO[Math.max(0, Math.min(4, stage))];
+    const id = 'hg' + (++uid);
+    const line = 'stroke="#1a0b2e" stroke-width="3" stroke-linejoin="round"';
+    let s = `<svg class="hero" viewBox="0 0 200 200" aria-hidden="true"><defs>
+      <linearGradient id="${id}r" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${p.robe}"/><stop offset="1" stop-color="${p.robe2}"/></linearGradient>
+      <radialGradient id="${id}a"><stop offset="0" stop-color="${p.aura || '#000'}" stop-opacity=".75"/><stop offset="1" stop-color="${p.aura || '#000'}" stop-opacity="0"/></radialGradient></defs>`;
+    if (p.aura) s += `<circle class="hero-aura" cx="100" cy="110" r="96" fill="url(#${id}a)"/>`;
+    if (p.wings) {
+      const w = 'M92 128 C64 96 26 86 6 60 C14 100 28 122 56 140 C36 142 22 152 14 166 C46 164 70 156 90 146Z';
+      s += `<g class="hero-wings" fill="${p.wings}" ${line}><path d="${w}"/>${mirror(w)}</g>`;
+    }
+    if (p.cape) s += `<path d="M70 120 L36 196 L164 196 L130 120Z" fill="${p.cape}" ${line}/>`;
+    s += `<path d="M100 112 C80 112 70 120 66 140 L54 196 L146 196 L134 140 C130 120 120 112 100 112Z" fill="url(#${id}r)" ${line}/>
+      <path d="M100 116 L100 196" stroke="${p.trim}" stroke-width="7"/>
+      <rect x="66" y="150" width="68" height="10" rx="3" fill="${p.trim}" stroke="#1a0b2e" stroke-width="2"/>
+      <path d="M68 132 Q56 150 62 168" stroke="${p.robe2}" stroke-width="16" stroke-linecap="round" fill="none"/>
+      <circle cx="62" cy="168" r="8" fill="#ffdcbc" ${line}/>`;
+    // 杖
+    s += `<line x1="154" y1="70" x2="154" y2="198" stroke="#1a0b2e" stroke-width="11" stroke-linecap="round"/>
+      <line x1="154" y1="70" x2="154" y2="198" stroke="${p.staff}" stroke-width="6" stroke-linecap="round"/>`;
+    if (p.gem) {
+      s += `<circle cx="154" cy="58" r="${stage >= 2 ? 22 : 0}" fill="${p.gem}" opacity=".3" class="hero-glow"/>
+        <path d="M154 42 L166 58 L154 74 L142 58Z" fill="${p.gem}" ${line}/><path d="M154 46 L160 58 L154 58Z" fill="#fff" opacity=".7"/>`;
+    }
+    if (p.crown) s += `<path d="M154 30 l5 11 l12 1 l-9 8 l3 12 l-11 -6 l-11 6 l3 -12 l-9 -8 l12 -1Z" fill="#fff6a0" ${line}/>`;
+    s += `<path d="M136 132 Q148 140 150 146" stroke="${p.robe2}" stroke-width="16" stroke-linecap="round" fill="none"/>
+      <circle cx="152" cy="146" r="9" fill="#ffdcbc" ${line}/>`;
+    // 顔
+    s += `<circle cx="100" cy="84" r="33" fill="#ffdcbc" ${line}/>
+      <path d="M67 84 C62 50 138 50 133 84 C126 70 114 64 102 72 C92 62 76 68 67 84Z" fill="#2a1a3a" ${line}/>
+      <ellipse cx="88" cy="90" rx="4.5" ry="6.5" fill="#1a1030"/><ellipse cx="112" cy="90" rx="4.5" ry="6.5" fill="#1a1030"/>
+      <circle cx="89.5" cy="87.5" r="1.8" fill="#fff"/><circle cx="113.5" cy="87.5" r="1.8" fill="#fff"/>
+      <path d="M80 78 L94 81 M120 78 L106 81" stroke="#2a1a3a" stroke-width="3.5" stroke-linecap="round"/>
+      <path d="M94 102 Q100 107 106 102" stroke="#8a2a2a" stroke-width="3" stroke-linecap="round" fill="none"/>
+      <ellipse cx="80" cy="99" rx="6" ry="3.5" fill="#ff8aa0" opacity=".6"/><ellipse cx="120" cy="99" rx="6" ry="3.5" fill="#ff8aa0" opacity=".6"/>`;
+    if (p.band) {
+      s += `<path d="M68 72 Q100 60 132 72 L131 81 Q100 70 69 81Z" fill="${p.band}" ${line}/>
+        <path d="M68 76 L50 70 L54 82Z M68 78 L48 86 L58 90Z" fill="${p.band}" ${line}/>`;
+    }
+    if (p.hat) {
+      s += `<path d="M72 64 C84 44 96 20 116 6 C112 24 120 44 130 64Z" fill="${p.hat}" ${line}/>
+        <ellipse cx="100" cy="66" rx="48" ry="10" fill="${p.hat}" ${line}/>
+        <path d="M74 60 Q100 52 128 60 L129 66 Q100 58 73 66Z" fill="${p.trim}"/>`;
+      if (p.star) s += `<path d="M104 30 l3 7 l7 1 l-5 5 l1 7 l-6 -4 l-6 4 l1 -7 l-5 -5 l7 -1Z" fill="${p.trim}"/>`;
+    }
+    if (p.crown) {
+      s += `<path d="M70 62 l4 -30 l14 16 l12 -26 l12 26 l14 -16 l4 30Z" fill="#ffd54a" ${line}/>
+        <circle cx="100" cy="42" r="5" fill="#ff2d55"/><circle cx="78" cy="52" r="3.5" fill="#35e0ff"/><circle cx="122" cy="52" r="3.5" fill="#35e0ff"/>`;
+    }
+    return s + '</svg>';
+  }
+
+  return { emblem, circle, monster, hero };
 })();
